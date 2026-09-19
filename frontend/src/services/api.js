@@ -8,7 +8,7 @@ export { BASE_URL };
 
 export async function checkBackendHealth() {
   try {
-    const res = await fetch(`${BASE_URL}/health`, { signal: AbortSignal.timeout(3000) });
+    const res = await fetch(`${BASE_URL}/health`, { signal: AbortSignal.timeout(10000) });
     if (res.ok) {
       return await res.json();
     }
