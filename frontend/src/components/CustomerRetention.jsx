@@ -94,7 +94,7 @@ export default function CustomerRetention({ customerData, onCampaignLaunched }) 
             <Sparkles size={18} color="var(--paytm-cyan)" />
           </div>
           <div style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--paytm-cyan)', marginBottom: 4 }}>
-            ₹{potential_recovered_revenue.toLocaleString('en-IN')}
+            ₹{(potential_recovered_revenue ?? 0).toLocaleString('en-IN')}
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             Estimated weekly recovery
@@ -171,7 +171,7 @@ export default function CustomerRetention({ customerData, onCampaignLaunched }) 
             </tr>
           </thead>
           <tbody>
-            {inactive_list.map((c) => (
+            {(inactive_list || []).map((c) => (
               <tr key={c.id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.04)' }}>
                 <td style={{ padding: '12px 16px', fontWeight: 600, color: '#FFFFFF', fontSize: '0.88rem' }}>
                   {c.name}
@@ -185,7 +185,7 @@ export default function CustomerRetention({ customerData, onCampaignLaunched }) 
                   </span>
                 </td>
                 <td style={{ padding: '12px 16px', fontSize: '0.85rem', color: '#FFFFFF', fontWeight: 600 }}>
-                  ₹{c.total_spend.toLocaleString('en-IN')}
+                  ₹{(c.total_spend ?? 0).toLocaleString('en-IN')}
                 </td>
                 <td style={{ padding: '12px 16px', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
                   {c.total_visits} orders

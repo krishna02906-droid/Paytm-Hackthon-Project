@@ -1,7 +1,16 @@
 import React from 'react';
-import { Radio, RefreshCw, Globe, Sparkles, Store, CheckCircle2 } from 'lucide-react';
+import { Radio, RefreshCw, Globe, Sparkles, Store, CheckCircle2, Activity, AlertCircle, RotateCcw } from 'lucide-react';
 
-export default function Navbar({ merchant, activeLanguage, setLanguage, onRefresh, loading }) {
+export default function Navbar({
+  merchant,
+  activeLanguage,
+  setLanguage,
+  onRefresh,
+  loading,
+  backendConnected,
+  onResetDemo,
+  resettingDemo
+}) {
   return (
     <header style={{
       background: 'rgba(8, 13, 26, 0.85)',
@@ -80,28 +89,83 @@ export default function Navbar({ merchant, activeLanguage, setLanguage, onRefres
           </div>
         </div>
 
-        {/* Right: Soundbox Status, Language, Refresh */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {/* Right: Live Backend Status, Soundbox Status, Language, Refresh, Reset */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          {/* Backend Status Indicator */}
+          {backendConnected ? (
+            <div
+              title="FastAPI Backend Live on http://127.0.0.1:8000"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                borderRadius: 20,
+                background: 'rgba(16, 185, 129, 0.12)',
+                border: '1px solid rgba(16, 185, 129, 0.4)'
+              }}
+            >
+              <div style={{
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                background: '#10B981',
+                boxShadow: '0 0 6px #10B981'
+              }} />
+              <Activity size={13} color="#10B981" />
+              <span style={{ fontSize: '0.74rem', fontWeight: 600, color: '#10B981' }}>
+                Backend Live
+              </span>
+            </div>
+          ) : (
+            <button
+              onClick={onRefresh}
+              title="Backend disconnected! Click to reconnect."
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                borderRadius: 20,
+                background: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                cursor: 'pointer'
+              }}
+            >
+              <div style={{
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                background: '#EF4444',
+                boxShadow: '0 0 6px #EF4444'
+              }} />
+              <AlertCircle size={13} color="#EF4444" />
+              <span style={{ fontSize: '0.74rem', fontWeight: 600, color: '#EF4444' }}>
+                Backend Offline (Retry)
+              </span>
+            </button>
+          )}
+
           {/* Soundbox 4.0 Status Badge */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 8,
+            gap: 6,
             padding: '6px 12px',
             borderRadius: 20,
-            background: 'rgba(16, 185, 129, 0.1)',
-            border: '1px solid rgba(16, 185, 129, 0.3)'
+            background: 'rgba(0, 186, 242, 0.1)',
+            border: '1px solid rgba(0, 186, 242, 0.3)'
           }}>
             <div style={{
-              width: 8,
-              height: 8,
+              width: 7,
+              height: 7,
               borderRadius: '50%',
-              background: '#10B981',
-              boxShadow: '0 0 8px #10B981'
+              background: 'var(--paytm-cyan)',
+              boxShadow: '0 0 6px var(--paytm-cyan)'
             }} />
-            <Radio size={14} color="#10B981" />
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#10B981' }}>
-              Soundbox 4.0 (4G Online)
+            <Radio size={13} color="var(--paytm-cyan)" />
+            <span style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--paytm-cyan)' }}>
+              Soundbox 4.0 (Online)
             </span>
           </div>
 
@@ -119,13 +183,13 @@ export default function Navbar({ merchant, activeLanguage, setLanguage, onRefres
                 key={lang}
                 onClick={() => setLanguage(lang)}
                 style={{
-                  padding: '4px 10px',
+                  padding: '4px 9px',
                   borderRadius: 7,
                   border: 'none',
                   background: activeLanguage === lang ? 'var(--paytm-cyan)' : 'transparent',
                   color: activeLanguage === lang ? '#000000' : 'var(--text-secondary)',
                   fontWeight: activeLanguage === lang ? 700 : 500,
-                  fontSize: '0.75rem',
+                  fontSize: '0.74rem',
                   cursor: 'pointer',
                   textTransform: 'capitalize',
                   transition: 'all 0.15s ease'
@@ -136,15 +200,29 @@ export default function Navbar({ merchant, activeLanguage, setLanguage, onRefres
             ))}
           </div>
 
+          {/* Reset Demo Button */}
+          <button
+            onClick={onResetDemo}
+            className="btn-secondary"
+            style={{ padding: '7px 11px', borderColor: 'rgba(0, 186, 242, 0.35)' }}
+            title="Reset demo data to initial state for judges"
+            disabled={resettingDemo}
+          >
+            <RotateCcw size={13} className={resettingDemo ? 'radar-ring' : ''} color="var(--paytm-cyan)" />
+            <span style={{ fontSize: '0.76rem', color: 'var(--paytm-cyan)' }}>
+              {resettingDemo ? 'Resetting...' : 'Reset Demo'}
+            </span>
+          </button>
+
           {/* Refresh Button */}
           <button
             onClick={onRefresh}
             className="btn-secondary"
-            style={{ padding: '8px 12px' }}
+            style={{ padding: '7px 11px' }}
             title="Refresh Store Data"
           >
-            <RefreshCw size={14} className={loading ? 'radar-ring' : ''} />
-            <span style={{ fontSize: '0.78rem' }}>Refresh</span>
+            <RefreshCw size={13} className={loading ? 'radar-ring' : ''} />
+            <span style={{ fontSize: '0.76rem' }}>Refresh</span>
           </button>
         </div>
       </div>

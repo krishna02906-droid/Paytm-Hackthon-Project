@@ -167,7 +167,7 @@ export default function DemandPrediction({ predictions, onPOOrdered }) {
                   {/* 7-Day Forecast & Sparkline */}
                   <td style={{ padding: '14px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 24, marginBottom: 4 }}>
-                      {p.daily_forecast.map((val, i) => (
+                      {(p.daily_forecast || []).map((val, i) => (
                         <div
                           key={i}
                           style={{

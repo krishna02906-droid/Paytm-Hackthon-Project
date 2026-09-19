@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Mic, MicOff, Volume2, VolumeX, Sparkles, CheckCircle2, ShieldCheck, ArrowRight, Bot, User, Clock } from 'lucide-react';
+import { Send, Mic, MicOff, Volume2, VolumeX, Sparkles, CheckCircle2, ShieldCheck, ArrowRight, Bot, User, Clock, Navigation, Truck, Calendar } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { sendCopilotMessage, executeAction } from '../services/api';
+import { sendCopilotMessage, executeAction, verifyAction } from '../services/api';
 
-export default function CopilotChat({ language, onActionApproved }) {
+export default function CopilotChat({ language, onActionApproved, onNavigateTab }) {
   const [messages, setMessages] = useState([
     {
       id: 'init-1',
@@ -143,46 +143,167 @@ export default function CopilotChat({ language, onActionApproved }) {
     }
   };
 
+  const handleVerifyFromChat = async (actionId) => {
+    try {
+      confetti({ particleCount: 70, spread: 80, origin: { y: 0.6 } });
+      const res = await verifyAction(actionId);
+
+      // Update the card status in chat
+      setMessages((prev) => prev.map((msg) => {
+        if (msg.action_card && msg.action_card.action_id === actionId) {
+          return {
+            ...msg,
+            action_card: {
+              ...msg.action_card,
+              status: 'VERIFIED',
+              revenue_lift: res.revenue_lift,
+              verification_notes: res.verification_notes
+            }
+          };
+        }
+        return msg;
+      }));
+
+      // Add assistant confirmation response
+      const verifyMsg = {
+        id: `verified-${Date.now()}`,
+        role: 'assistant',
+        message: `🎉 Telemetry Verification Complete!\n\n` +
+          (res.verification_notes || `Verified impact recorded. Recovered Revenue: +₹${(res.revenue_lift || 0).toLocaleString('en-IN')}`) +
+          `\n\nAap 'Action Center' tab mein iska live audit dekh sakte hain.`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        action_card: null
+      };
+      setMessages((prev) => [...prev, verifyMsg]);
+
+      if (onActionApproved) onActionApproved(res);
+    } catch (err) {
+      console.error('Verify error:', err);
+    }
+  };
+
   const handleApproveAction = async (card) => {
     try {
-      // Trigger confetti animation
       confetti({
         particleCount: 80,
         spread: 70,
         origin: { y: 0.6 }
       });
 
-      const res = await executeAction({
-        action_type: card.action_type || 'DISCOUNT_CAMPAIGN',
-        title: card.title,
-        description: card.description,
-        target_audience: 'Inactive Customers (14+ Days)',
-        payload: {
+      const actionType = card.action_type || 'DISCOUNT_CAMPAIGN';
+      let targetAudience = 'Inactive Repeat Customers';
+      let payload = {};
+      let confirmText = '';
+      let executedCard = {};
+
+      const now = new Date();
+      const todayFormatted = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      const timeFormatted = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+      if (actionType === 'RESTOCK_PO') {
+        const etaFormatted = `${todayFormatted}, 04:00 PM`;
+        targetAudience = 'Supplier (Metro Wholesalers North Delhi)';
+        payload = {
+          po_number: card.po_number || 'PO-AMUL-DEL-091',
+          estimated_cost: card.estimated_cost || 4600,
+          items: '50 pkts Amul Taaza Milk 500ml + 15 bags Aashirvaad Atta 5kg',
+          supplier: 'Metro Wholesalers North Delhi'
+        };
+        confirmText = `✅ Shandar! Supplier Purchase Order safaltapoorvak dispatch ho gaya hai.\n\n` +
+          `• Action: ${card.title}\n` +
+          `• Supplier: Metro Wholesalers North Delhi (PO-AMUL-DEL-091)\n` +
+          `• Order Details: 50 pkts Amul Taaza Milk 500ml + 15 bags Aashirvaad Atta 5kg\n` +
+          `• Invoice Value: ₹${(card.estimated_cost || 4600).toLocaleString('en-IN')}\n` +
+          `• Dispatched Date & Time: ${todayFormatted} at ${timeFormatted}\n` +
+          `• Delivery ETA: ${etaFormatted} (Aaj shaam 4:00 PM tak — Evening peak rush se pehle!)\n` +
+          `• Live Tracking: In Transit via Paytm FastDelivery\n\n` +
+          `Aap 'Action Center' tab mein iska live delivery tracking milestone dekh sakte hain.`;
+        executedCard = {
+          type: 'ACTION_EXECUTED',
+          action_type: 'RESTOCK_PO',
+          title: card.title,
+          status: 'ACTIVE',
+          subtitle: `Dispatched: ${todayFormatted}, ${timeFormatted} • Est. Delivery: ${etaFormatted}`,
+          dispatched_at: `${todayFormatted}, ${timeFormatted}`,
+          delivery_eta: etaFormatted,
+          live_status: 'In Transit via Paytm FastDelivery',
+          meta: 'Value: ₹4,600 • 2 Critical SKUs Protected'
+        };
+      } else if (actionType === 'SOUNDBOX_ANNOUNCEMENT') {
+        const activeWindow = `${todayFormatted}, 05:00 PM – 08:00 PM`;
+        targetAudience = 'Walk-in Store Shoppers';
+        payload = {
+          sound_type: 'PROMO_ANNOUNCEMENT',
+          text: card.broadcast_text || 'Paytm Saathi Alert: Sharma Kirana par aaj shaam 5 se 8 baje paayen ₹20 tak ki chhoot!',
+          device_id: 'SB4-DEL-98214'
+        };
+        confirmText = `✅ Shandar! Paytm Soundbox 4.0 par voice announcement schedule kar diya gaya hai.\n\n` +
+          `• Action: ${card.title}\n` +
+          `• Broadcast Device: Paytm Soundbox 4.0 (ID: SB4-DEL-98214)\n` +
+          `• Scheduled Date & Time: ${todayFormatted} at ${timeFormatted}\n` +
+          `• Broadcast Window: ${activeWindow} (Every 15 mins peak rush)\n` +
+          `• Live Tracking: Device Telemetry Online (4G)\n\n` +
+          `Aap 'Action Center' tab mein iska live broadcast log track kar sakte hain.`;
+        executedCard = {
+          type: 'ACTION_EXECUTED',
+          action_type: 'SOUNDBOX_ANNOUNCEMENT',
+          title: card.title,
+          status: 'ACTIVE',
+          subtitle: `Scheduled: ${todayFormatted}, ${timeFormatted} • Window: ${activeWindow}`,
+          dispatched_at: `${todayFormatted}, ${timeFormatted}`,
+          delivery_eta: `${todayFormatted}, 08:00 PM`,
+          live_status: 'Airing on Paytm Soundbox 4.0 (4G Audio)',
+          meta: 'Scheduled for 5:00 PM - 8:00 PM Peak Rush'
+        };
+      } else {
+        // DISCOUNT_CAMPAIGN
+        const activeWindow = `${todayFormatted}, 05:00 PM – 08:00 PM`;
+        targetAudience = 'Customers Inactive for 14+ Days';
+        payload = {
           coupon_code: card.coupon_code || 'COMEBACK20',
           discount_amount: card.discount_amount || 20,
           target_count: card.target_count || 42
-        },
-        approved_by: 'Merchant (Ramesh Sharma)'
-      });
-
-      // Add execution confirmation card to chat
-      const confirmationMsg = {
-        id: `exec-${Date.now()}`,
-        role: 'assistant',
-        message: `✅ Shandar! Aapka anurodh safaltapoorvak execute ho gaya hai.\n\n` +
+        };
+        confirmText = `✅ Shandar! Aapka anurodh safaltapoorvak execute ho gaya hai.\n\n` +
           `• Action: ${card.title}\n` +
           `• Discount Code: ${card.coupon_code || 'COMEBACK20'}\n` +
-          `• Target Audience: 42 Inactive repeat customers ko SMS aur WhatsApp bhej diya gaya hai.\n\n` +
-          `Aap 'Action Center' tab mein iski live verification aur recovered sales dekh sakte hain.`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        action_card: {
+          `• Target Audience: ${card.target_count || 42} Inactive repeat customers ko SMS aur WhatsApp bhej diya gaya hai.\n` +
+          `• Dispatched Date & Time: ${todayFormatted} at ${timeFormatted}\n` +
+          `• Valid Window: ${activeWindow} (Orders ₹150+)\n` +
+          `• Live Tracking: Real-time Soundbox & QR redemption tracking active\n\n` +
+          `Aap 'Action Center' tab mein iski live verification aur recovered sales dekh sakte hain.`;
+        executedCard = {
           type: 'ACTION_EXECUTED',
-          action_id: res.action_id,
+          action_type: 'DISCOUNT_CAMPAIGN',
           title: card.title,
           status: 'ACTIVE',
           coupon_code: card.coupon_code || 'COMEBACK20',
-          reach_count: card.target_count || 42
-        }
+          reach_count: card.target_count || 42,
+          subtitle: `Coupon: ${card.coupon_code || 'COMEBACK20'} • Active Window: ${activeWindow}`,
+          dispatched_at: `${todayFormatted}, ${timeFormatted}`,
+          delivery_eta: `${todayFormatted}, 08:00 PM`,
+          live_status: 'Live Telemetry Tracking Active',
+          meta: 'Valid 5:00 PM - 8:00 PM on Orders above ₹150'
+        };
+      }
+
+      const res = await executeAction({
+        action_type: actionType,
+        title: card.title,
+        description: card.description,
+        target_audience: targetAudience,
+        payload: payload,
+        approved_by: 'Merchant (Ramesh Sharma)'
+      });
+
+      executedCard.action_id = res.action_id;
+
+      const confirmationMsg = {
+        id: `exec-${Date.now()}`,
+        role: 'assistant',
+        message: confirmText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        action_card: executedCard
       };
 
       setMessages((prev) => [...prev, confirmationMsg]);
@@ -387,31 +508,130 @@ export default function CopilotChat({ language, onActionApproved }) {
               {/* Action Executed Card */}
               {m.action_card && m.action_card.type === 'ACTION_EXECUTED' && (
                 <div style={{
-                  maxWidth: '82%',
-                  marginTop: 6,
-                  padding: '12px 16px',
-                  borderRadius: 12,
-                  background: 'rgba(16, 185, 129, 0.12)',
-                  border: '1px solid rgba(16, 185, 129, 0.4)',
+                  maxWidth: '85%',
+                  marginTop: 8,
+                  padding: '14px 18px',
+                  borderRadius: 14,
+                  background: m.action_card.status === 'VERIFIED'
+                    ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(15, 23, 42, 0.95) 100%)'
+                    : 'linear-gradient(135deg, rgba(0, 186, 242, 0.15) 0%, rgba(16, 25, 45, 0.95) 100%)',
+                  border: `1px solid ${m.action_card.status === 'VERIFIED' ? 'rgba(16, 185, 129, 0.5)' : 'rgba(0, 186, 242, 0.4)'}`,
+                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 12
+                  flexDirection: 'column',
+                  gap: 10
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <CheckCircle2 size={20} color="#10B981" />
-                    <div>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#10B981' }}>
-                        {m.action_card.title} — Active & Dispatched
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                        Coupon: <strong style={{ color: '#FFFFFF' }}>{m.action_card.coupon_code}</strong> • Reach: {m.action_card.reach_count} Merchants/Customers
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 10
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      {m.action_card.status === 'VERIFIED' ? (
+                        <CheckCircle2 size={22} color="#10B981" />
+                      ) : (
+                        <div style={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: '50%',
+                          background: 'var(--paytm-cyan)',
+                          boxShadow: '0 0 8px var(--paytm-cyan)'
+                        }} className="pulse-active" />
+                      )}
+                      <div>
+                        <div style={{
+                          fontSize: '0.9rem',
+                          fontWeight: 700,
+                          color: m.action_card.status === 'VERIFIED' ? '#10B981' : '#FFFFFF'
+                        }}>
+                          {m.action_card.title} {m.action_card.status === 'VERIFIED' ? '— Verified Impact' : '— Active & Dispatched'}
+                        </div>
+                        <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
+                          {m.action_card.subtitle || (
+                            m.action_card.coupon_code
+                              ? `Coupon: ${m.action_card.coupon_code} • Reach: ${m.action_card.reach_count} Customers`
+                              : 'Controlled Action Dispatched via Paytm Rails'
+                          )}
+                        </div>
                       </div>
                     </div>
+
+                    {m.action_card.status === 'VERIFIED' ? (
+                      <span className="badge badge-green" style={{ fontSize: '0.7rem', padding: '4px 10px' }}>
+                        VERIFIED IMPACT
+                      </span>
+                    ) : (
+                      <span className="badge badge-cyan" style={{ fontSize: '0.7rem', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--paytm-cyan)' }} className="radar-ring" />
+                        TRACKING LIVE
+                      </span>
+                    )}
                   </div>
-                  <span className="badge badge-green" style={{ fontSize: '0.68rem' }}>
-                    TRACKING LIVE
-                  </span>
+
+                  {/* Live Tracking Timestamp Details Bar */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 8,
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    background: 'rgba(0, 186, 242, 0.05)',
+                    border: '1px solid rgba(0, 186, 242, 0.15)',
+                    fontSize: '0.74rem'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Clock size={13} color="var(--paytm-cyan)" />
+                      <span style={{ color: 'var(--text-muted)' }}>Dispatched / Triggered:</span>
+                      <strong style={{ color: '#FFFFFF' }}>
+                        {m.action_card.dispatched_at || (new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }))}
+                      </strong>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Navigation size={13} color="#10B981" />
+                      <span style={{ color: 'var(--text-muted)' }}>
+                        {m.action_card.action_type === 'RESTOCK_PO' ? 'Delivery ETA:' : 'Active Window / ETA:'}
+                      </span>
+                      <strong style={{ color: '#10B981' }}>
+                        {m.action_card.delivery_eta || (new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) + (m.action_card.action_type === 'RESTOCK_PO' ? ', 04:00 PM' : ', 08:00 PM'))}
+                      </strong>
+                    </div>
+                  </div>
+
+                  {/* Verification / Navigation Action Buttons */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    gap: 10,
+                    paddingTop: 10,
+                    borderTop: '1px solid rgba(255, 255, 255, 0.08)'
+                  }}>
+                    {m.action_card.status !== 'VERIFIED' && m.action_card.action_id && (
+                      <button
+                        onClick={() => handleVerifyFromChat(m.action_card.action_id)}
+                        className="btn-success"
+                        style={{ padding: '6px 14px', fontSize: '0.78rem' }}
+                        title="Simulate live Soundbox & QR telemetry verification"
+                      >
+                        <Sparkles size={14} />
+                        <span>Verify Live Impact ⚡</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => onNavigateTab ? onNavigateTab('actions') : null}
+                      className="btn-secondary"
+                      style={{ padding: '6px 12px', fontSize: '0.78rem' }}
+                    >
+                      <span>View in Action Center</span>
+                      <ArrowRight size={14} />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

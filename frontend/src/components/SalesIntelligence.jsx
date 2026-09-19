@@ -86,7 +86,7 @@ export default function SalesIntelligence({ analytics, onInvestigate }) {
             <DollarSign size={18} color="var(--paytm-cyan)" />
           </div>
           <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#FFFFFF', marginBottom: 4 }}>
-            ₹{today.revenue.toLocaleString('en-IN')}
+            ₹{(today?.revenue ?? 0).toLocaleString('en-IN')}
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--accent-green)' }}>
             +6.4% vs same time yesterday
@@ -100,10 +100,10 @@ export default function SalesIntelligence({ analytics, onInvestigate }) {
             <ShoppingBag size={18} color="#A855F7" />
           </div>
           <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#FFFFFF', marginBottom: 4 }}>
-            {today.orders} orders
+            {today?.orders ?? 0} orders
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Avg Basket: ₹{today.avg_ticket}
+            Avg Basket: ₹{today?.avg_ticket ?? 0}
           </div>
         </div>
 
@@ -119,10 +119,10 @@ export default function SalesIntelligence({ analytics, onInvestigate }) {
             color: isDown ? '#F43F5E' : '#10B981',
             marginBottom: 4
           }}>
-            {weekly_comparison.revenue_change_pct}%
+            {weekly_comparison?.revenue_change_pct ?? 0}%
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-            ₹{weekly_comparison.curr_week_revenue.toLocaleString('en-IN')} vs ₹{weekly_comparison.prev_week_revenue.toLocaleString('en-IN')}
+            ₹{(weekly_comparison?.curr_week_revenue ?? 0).toLocaleString('en-IN')} vs ₹{(weekly_comparison?.prev_week_revenue ?? 0).toLocaleString('en-IN')}
           </div>
         </div>
 
@@ -133,7 +133,7 @@ export default function SalesIntelligence({ analytics, onInvestigate }) {
             <Clock size={18} color="#F59E0B" />
           </div>
           <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#F59E0B', marginBottom: 4 }}>
-            {weekly_comparison.evening_drop_pct}%
+            {weekly_comparison?.evening_drop_pct ?? 0}%
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             Decline concentrated in evening hours
