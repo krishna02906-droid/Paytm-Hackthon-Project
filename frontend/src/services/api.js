@@ -1,4 +1,38 @@
-const BASE_URL = '/api';
+// Determine backend URL:
+// In Vite dev, '/api' is proxied to http://127.0.0.1:8000
+// If VITE_API_URL is provided, use it directly or fallback to '/api'
+const API_ORIGIN = (import.meta.env.VITE_API_URL || 'https://paytm-saathi-backend.onrender.com').replace(/\/$/, '');
+const BASE_URL = API_ORIGIN ? `${API_ORIGIN}/api` : '/api';
+
+export { BASE_URL };
+
+export async function checkBackendHealth() {
+  try {
+    const res = await fetch(`${BASE_URL}/health`, { signal: AbortSignal.timeout(3000) });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    if (BASE_URL === '/api') {
+      try {
+        const fallback = await fetch('http://127.0.0.1:8000/api/health', { signal: AbortSignal.timeout(3000) });
+        if (fallback.ok) return await fallback.json();
+      } catch (e) {
+        // unreachable
+      }
+    }
+  }
+  return { status: 'offline' };
+}
+
+export async function resetDemoData() {
+  const res = await fetch(`${BASE_URL}/demo/reset`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  if (!res.ok) throw new Error('Failed to reset demo data');
+  return res.json();
+}
 
 export async function fetchMerchantProfile() {
   const res = await fetch(`${BASE_URL}/merchant/profile`);
